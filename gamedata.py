@@ -110,7 +110,7 @@ class GameDataCollector:
             game_id = 0
         else:
             # si hay juegos guardados, el id es el siguiente
-            game_id = len(os.listdir(self.output_dir))
+            game_id = len(os.listdir(self.output_dir)) + 1
         # Crear el nombre del archivo
         # del timestamp solo nos quedamos con la fecha dia/mes/año
         steps_filename = os.path.join(self.output_dir, f"game_{game_id}.csv")

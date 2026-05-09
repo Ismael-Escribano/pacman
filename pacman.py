@@ -772,7 +772,8 @@ def runGames(layout, pacman, ghosts, display, numGames, record, numTraining=0, c
         # Ahmed. Vamos a usar el recolector de datos para guardar los datos de las partidas.
         ###################################################
         # Guardar los datos del juego actual
-        data_collector.save_game_data(i)
+        if 'y' in input("Guardar? ").lower():
+            data_collector.save_game_data(i)
         ###################################################
         if record:
             import time
