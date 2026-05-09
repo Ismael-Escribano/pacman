@@ -107,13 +107,17 @@ class GameDataCollector:
             return
         
         if not os.path.exists(self.output_dir):
-            game_id = 0
+            game_id_max = 0
         else:
             # si hay juegos guardados, el id es el siguiente
-            game_id = len(os.listdir(self.output_dir)) + 1
+            game_id_max = len(os.listdir(self.output_dir))
+        for i in range(game_id_max + 1):
+            if not os.path.exists(os.path.join(self.output_dir, f'game_{i}.csv')):
+                steps_filename = os.path.join(self.output_dir, f"game_{i}.csv")
+                break
         # Crear el nombre del archivo
         # del timestamp solo nos quedamos con la fecha dia/mes/año
-        steps_filename = os.path.join(self.output_dir, f"game_{game_id}.csv")
+        #steps_filename = os.path.join(self.output_dir, f"game_{game_id}.csv")
         
         # Guardar los pasos del juego
         fieldnames = [
@@ -127,7 +131,7 @@ class GameDataCollector:
             for step in self.current_game_data:
                 writer.writerow(step)
         
-        print(f"Datos del juego {game_id} guardados en {steps_filename}")
+        print(f"Datos del juego {i} guardados en {steps_filename}")
         self.current_game_data = []
     
     def _visualize_map(self, numeric_map):

@@ -324,7 +324,7 @@ class NeuralAgent(Agent):
             
             if ghost_state.scaredTimer > 0:
                 # Si el fantasma está asustado, acercarse a él
-                score += 50 / (ghost_distance + 1)
+                score -= 50 / (ghost_distance + 1)
             else:
                 # Si no está asustado, evitarlo
                 if ghost_distance <= 2:
