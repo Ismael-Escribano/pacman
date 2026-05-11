@@ -327,7 +327,7 @@ class NeuralAgent(Agent):
                 score -= 50 / (ghost_distance + 1)
             else:
                 # Si no está asustado, evitarlo
-                if ghost_distance <= 2:
+                if ghost_distance <= 3:
                     score -= 200  # Gran penalización por estar demasiado cerca
         
         # Combinar la puntuación de la red con la heurística
