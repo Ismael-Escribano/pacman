@@ -742,10 +742,10 @@ def runGames(layout, pacman, ghosts, display, numGames, record, numTraining=0, c
     data_collector = gamedata.GameDataCollector(replay_mode=replay_mode)
 
     # Fijar semilla consistente
-
+    
     seed = '42'  # o cualquier valor fijo
-
-    random.seed(seed)
+    SEED = os.getenv(SEED, 42)
+    random.seed(SEED)
     ###################################################
     for i in range(numGames):
         beQuiet = i < numTraining
