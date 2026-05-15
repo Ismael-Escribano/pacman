@@ -744,7 +744,7 @@ def runGames(layout, pacman, ghosts, display, numGames, record, numTraining=0, c
     # Fijar semilla consistente
     
     seed = '42'  # o cualquier valor fijo
-    SEED = os.getenv('SEED', 42)
+    SEED = os.getenv('SEED', '42')
     random.seed(SEED)
     ###################################################
     for i in range(numGames):

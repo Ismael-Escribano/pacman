@@ -16,7 +16,7 @@ class CSVPlaybackAgent(Agent):
         self.current_step = 0
         self.maps = []  # Guardar los mapas para visualización/depuración
         self.load_actions_from_csv(csv_file_path)
-        random.seed(os.getenv('SEED', 42))  # Para reproducibilidad
+        random.seed(os.getenv('SEED', "42"))  # Para reproducibilidad
     
     def load_actions_from_csv(self, csv_file_path):
         print(f"Cargando acciones desde: {csv_file_path}")
