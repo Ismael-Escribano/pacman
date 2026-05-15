@@ -13,7 +13,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 # Fijamos todas las semillas para reproducibilidad
-SEED = os.getenv('SEED', 42)
+SEED = os.getenv('SEED', "42")
 torch.manual_seed(SEED)
 random.seed(SEED)
 # Constantes

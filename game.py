@@ -36,7 +36,7 @@ import sys
 import gamedata # Para la extraccion de datos de la partida
 import random
 import os
-SEED = os.getenv("SEED", 42)
+SEED = os.getenv("SEED", "42")
 random.seed(SEED) # Para reproducibilidad de los resultados
 ###################################################
 

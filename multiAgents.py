@@ -322,14 +322,27 @@ class NeuralAgent(Agent):
             ghost_pos = ghost_state.getPosition()
             ghost_distance = manhattanDistance(pacman_pos, ghost_pos)
             
-            if ghost_state.scaredTimer > 0:
+            '''
+            if ghost_state.scaredTimer > 0 and ghost_distance <= 3:
                 # Si el fantasma está asustado, acercarse a él
-                score -= 50 / (ghost_distance + 1)
+                
+                score += 50 / (ghost_distance + 1)
             else:
+            
                 # Si no está asustado, evitarlo
-                if ghost_distance <= 3:
-                    score -= 200  # Gran penalización por estar demasiado cerca
+            '''
+            if ghost_distance <= 4:
+                score -= 200  # Gran penalización por estar demasiado cerca
         
+        # Factor 3: Comer más cuando el fantasma está asustado
+        for ghost_state in ghost_states:
+            if ghost_state.scaredTimer > 0:
+                if food:
+                    min_food_distance = min(manhattanDistance(pacman_pos, food_pos) for food_pos in food)
+                    score += 1000 / (min_food_distance + 1)
+                    
+
+
         # Combinar la puntuación de la red con la heurística
         neural_score = 0
         for i, action in enumerate(self.idx_to_action.values()):
