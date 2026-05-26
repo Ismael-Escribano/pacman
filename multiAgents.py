@@ -470,6 +470,9 @@ class NeuralAgent(Agent):
         if all(times) > 0 and food:
             min_food_distance = min(manhattanDistance(pacman_pos, food_pos) for food_pos in food)
             score += 1 / (min_food_distance + 1)
+            
+            if pacman_pos == Directions.STOP:
+                score -= 500
         
         # Factor 4: no quedarse dando vueltas (no estancarse)
         ultimas_acciones = []
@@ -478,10 +481,12 @@ class NeuralAgent(Agent):
         if len(ultimas_acciones) > 4:
             ultimas_acciones.pop(0) # no guardamos todas, quitamos al llegar a 5 y así siempre habrá 4 para comprobar abajo
 
-        if len(self.ultimas_acciones) == 4: # vemos si hace lo mismo en bucle hasta 2 veces (N S N S por ejemplo, así hará otro movimiento)
+        if len(ultimas_acciones) == 4: # vemos si hace lo mismo en bucle hasta 2 veces (N S N S por ejemplo, así hará otro movimiento)
 
             if ultimas_acciones[-1] == ultimas_acciones[-2] and ultimas_acciones[-2] == ultimas_acciones[-3]:
-                score -= 25
+                score -= 500
+
+        
 
 
         # Combinar la puntuación de la red con la heurística
