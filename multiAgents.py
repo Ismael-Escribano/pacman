@@ -232,7 +232,54 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
         Returns the minimax action using self.depth and self.evaluationFunction
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        def alphabeta(gameState, depth, alpha, beta, agentIndex):
+            if depth == self.depth or gameState.isWin() or gameState.isLose():
+                return self.evaluationFunction(gameState)
+            
+            if agentIndex == 0: # Turno de Pacman (MAX)
+                max_eval = float('-inf')
+                actions = gameState.getLegalActions(agentIndex)
+                if not actions:
+                    return self.evaluationFunction(gameState)
+                for action in actions:
+                    successor = gameState.generateSuccessor(agentIndex, action)
+                    eval_score = alphabeta(successor, depth+1, alpha, beta, agentIndex+1)
+                    max_eval = max(max_eval, eval_score)
+                    alpha = max(alpha, eval_score)
+                    if beta <= alpha:
+                        break
+                return max_eval
+            
+            else: # Turno de los fantasmas (MIN)
+                min_eval = float('inf')
+                actions = gameState.getLegalActions(agentIndex)
+                if not actions:
+                    return self.evaluationFunction(gameState)
+                
+                nextAgent = agentIndex + 1
+                nextDepth = depth
+                if nextAgent == gameState.getNumAgents():
+                    nextAgent = 0
+                    nextDepth = depth + 1
+                
+                for action in actions:
+                    successor = gameState.generateSuccessor(agentIndex, action)
+                    eval_score = alphabeta(successor, nextDepth, alpha, beta, nextAgent)
+                    min_eval = min(min_eval, eval_score)
+                    beta = min(beta, eval_score)
+                    if beta <= alpha:
+                        break
+                return min_eval
+        bestAction = None
+        bestScore = float('-inf')
+        for action in gameState.getLegalActions(0):
+            succesor = gameState.generateSuccessor(0, action)
+            score = alphabeta(succesor, 0, float('-inf'), float('+inf'), 1)
+            if score > bestScore:
+                bestScore = score
+                bestAction = action
+        return bestAction
+
 
 class ExpectimaxAgent(MultiAgentSearchAgent):
     """
@@ -445,7 +492,7 @@ class NeuralAgent(Agent):
         
         return score + neural_score
 
-    def getAction(self, state):
+    def getAction(self, state, get_score = False):
         """
         Devuelve la mejor acción basada en la evaluación de la red neuronal
         y heurísticas adicionales.
@@ -511,7 +558,10 @@ class NeuralAgent(Agent):
         successors.sort(key=lambda x: x[1], reverse=True)
         
         # Devolver la mejor acción
-        return successors[0][0]
+        if not get_score:
+            return successors[0][0]
+        else:
+            return successors[0]
 
 # Definir una función para crear el agente
 def createNeuralAgent(model_path="models/pacman_model.pth"):
@@ -520,3 +570,69 @@ def createNeuralAgent(model_path="models/pacman_model.pth"):
     Útil para integrarse con la estructura de pacman.py.
     """
     return NeuralAgent(model_path)
+
+
+class AlphaBetaNeuralAgent(NeuralAgent):
+    def __init__(self, model_path="models/pacman_model.pth", evalFn = 'scoreEvaluationFunction', depth = '5'):
+        super().__init__(model_path)
+        self.index = 0 # Pacman is always agent index 0
+        self.evaluationFunction = util.lookup(evalFn, globals())
+        self.depth = int(depth)
+
+    def alphabeta(self, gameState, depth, alpha, beta, agentIndex):
+        if depth == self.depth or gameState.isWin() or gameState.isLose():
+            return self.evaluationFunction(gameState)
+        
+        if agentIndex == 0: # Turno de Pacman (MAX)
+            max_eval = float('-inf')
+            actions = gameState.getLegalActions(agentIndex)
+            if not actions:
+                return self.evaluationFunction(gameState)
+            for action in actions:
+                successor = gameState.generateSuccessor(agentIndex, action)
+                eval_score = self.alphabeta(successor, depth+1, alpha, beta, agentIndex+1)
+                max_eval = max(max_eval, eval_score)
+                alpha = max(alpha, eval_score)
+                if beta <= alpha:
+                    break
+            return max_eval
+        
+        else: # Turno de los fantasmas (MIN)
+            min_eval = float('inf')
+            actions = gameState.getLegalActions(agentIndex)
+            if not actions:
+                return self.evaluationFunction(gameState)
+            
+            nextAgent = agentIndex + 1
+            nextDepth = depth
+            if nextAgent == gameState.getNumAgents():
+                nextAgent = 0
+                nextDepth = depth + 1
+            
+            for action in actions:
+                successor = gameState.generateSuccessor(agentIndex, action)
+                eval_score = self.alphabeta(successor, nextDepth, alpha, beta, nextAgent)
+                min_eval = min(min_eval, eval_score)
+                beta = min(beta, eval_score)
+                if beta <= alpha:
+                    break
+            return min_eval
+    
+    def getAction(self, state):
+        neural_action = super().getAction(state, True)
+        if isinstance(neural_action, list):
+            neural_action, neural_score = neural_action
+        else:
+            neural_action, neural_score = neural_action, 0
+        alphabeta_action = None
+        alphabeta_score = float('-inf')
+        for action in state.getLegalActions(0):
+            succesor = state.generateSuccessor(0, action)
+            score = self.alphabeta(succesor, 0, float('-inf'), float('+inf'), 1)
+            if score > alphabeta_score:
+                alphabeta_score = score
+                alphabeta_action = action
+        if neural_score >= alphabeta_score:
+            return neural_action
+        else:
+            return alphabeta_action
