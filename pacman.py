@@ -583,6 +583,8 @@ def readCommand(argv):
                       help='CSV file path to replay game actions', 
 
                       default=None)
+    
+    parser.add_option('-s', '--seed', help="Seed to play", default=None)
 
     # parseamos los argumentos
 
@@ -600,6 +602,8 @@ def readCommand(argv):
     if len(otherjunk) != 0:
         raise Exception('Command line input not understood: ' + str(otherjunk))
     args = dict()
+
+    args['seed'] = options.seed
 
     # Fix the random seed
     random.seed('42')
@@ -726,7 +730,7 @@ def replayGame(layout, actions, display):
     display.finish()
 
 
-def runGames(layout, pacman, ghosts, display, numGames, record, numTraining=0, catchExceptions=False, timeout=30, replay_mode=False):
+def runGames(layout, pacman, ghosts, display, numGames, record, numTraining=0, catchExceptions=False, timeout=30, replay_mode=False, seed=None):
     import __main__
     __main__.__dict__['_display'] = display
 
@@ -743,9 +747,9 @@ def runGames(layout, pacman, ghosts, display, numGames, record, numTraining=0, c
 
     # Fijar semilla consistente
     
-    seed = '42'  # o cualquier valor fijo
-    SEED = os.getenv('SEED', '42')
-    random.seed(SEED)
+    seed = '42' if seed is None else str(seed)  # o cualquier valor fijo
+    print(seed)
+    random.seed(seed)
     ###################################################
     for i in range(numGames):
         beQuiet = i < numTraining

@@ -411,23 +411,24 @@ class NeuralAgent(Agent):
         
         return numeric_map
 
-    def evaluationFunction(self, state):
+    def evaluationFunction(self, state, neural = True):
         """
         Una función de evaluación basada en la red neuronal y en heurísticas adicionales.
         """
         if self.model is None:
             return 0  # Si no hay modelo, devolver 0
         
-        # Convertir a matriz
-        state_matrix = self.state_to_matrix(state)
-        
-        # Convertir a tensor
-        state_tensor = torch.FloatTensor(state_matrix).unsqueeze(0).to(self.device)
-        
-        # Obtener predicciones
-        with torch.no_grad():
-            output = self.model(state_tensor)
-            probabilities = torch.nn.functional.softmax(output, dim=1).cpu().numpy()[0]
+        if neural:
+            # Convertir a matriz
+            state_matrix = self.state_to_matrix(state)
+            
+            # Convertir a tensor
+            state_tensor = torch.FloatTensor(state_matrix).unsqueeze(0).to(self.device)
+            
+            # Obtener predicciones
+            with torch.no_grad():
+                output = self.model(state_tensor)
+                probabilities = torch.nn.functional.softmax(output, dim=1).cpu().numpy()[0]
         
         # Obtener acciones legales
         legal_actions = state.getLegalActions()
@@ -488,16 +489,18 @@ class NeuralAgent(Agent):
 
         
 
+        if neural:
+            # Combinar la puntuación de la red con la heurística
+            neural_score = 0
+            for i, action in enumerate(self.idx_to_action.values()):
+                if action in legal_actions:
+                    neural_score += probabilities[i] * 100
+            
+            return score + neural_score
+        else:
+            return score
 
-        # Combinar la puntuación de la red con la heurística
-        neural_score = 0
-        for i, action in enumerate(self.idx_to_action.values()):
-            if action in legal_actions:
-                neural_score += probabilities[i] * 100
-        
-        return score + neural_score
-
-    def getAction(self, state, get_score = False):
+    def getAction(self, state):
         """
         Devuelve la mejor acción basada en la evaluación de la red neuronal
         y heurísticas adicionales.
@@ -563,10 +566,7 @@ class NeuralAgent(Agent):
         successors.sort(key=lambda x: x[1], reverse=True)
         
         # Devolver la mejor acción
-        if not get_score:
-            return successors[0][0]
-        else:
-            return successors[0]
+        return successors[0][0]
 
 # Definir una función para crear el agente
 def createNeuralAgent(model_path="models/pacman_model.pth"):
@@ -578,21 +578,28 @@ def createNeuralAgent(model_path="models/pacman_model.pth"):
 
 
 class AlphaBetaNeuralAgent(NeuralAgent):
-    def __init__(self, model_path="models/pacman_model.pth", evalFn = 'scoreEvaluationFunction', depth = '5'):
+    def __init__(self, model_path="models/pacman_model.pth", depth = '6', w_trad = 0.25, w_neural = 0.75):
         super().__init__(model_path)
-        self.index = 0 # Pacman is always agent index 0
-        self.evaluationFunction = util.lookup(evalFn, globals())
         self.depth = int(depth)
+        self.w_trad = w_trad
+        self.w_neural = w_neural
+
+    def combined_evaluation(self, state):
+        trad_score = self.evaluationFunction(state, neural=False)
+
+        neural_score = self.evaluationFunction(state, neural=True)
+        
+        return self.w_trad * trad_score + self.w_neural * neural_score
 
     def alphabeta(self, gameState, depth, alpha, beta, agentIndex):
         if depth == self.depth or gameState.isWin() or gameState.isLose():
-            return self.evaluationFunction(gameState)
+            return self.combined_evaluation(gameState)
         
         if agentIndex == 0: # Turno de Pacman (MAX)
             max_eval = float('-inf')
             actions = gameState.getLegalActions(agentIndex)
             if not actions:
-                return self.evaluationFunction(gameState)
+                return self.combined_evaluation(gameState)
             for action in actions:
                 successor = gameState.generateSuccessor(agentIndex, action)
                 eval_score = self.alphabeta(successor, depth+1, alpha, beta, agentIndex+1)
@@ -606,7 +613,7 @@ class AlphaBetaNeuralAgent(NeuralAgent):
             min_eval = float('inf')
             actions = gameState.getLegalActions(agentIndex)
             if not actions:
-                return self.evaluationFunction(gameState)
+                return self.combined_evaluation(gameState)
             
             nextAgent = agentIndex + 1
             nextDepth = depth
@@ -624,20 +631,16 @@ class AlphaBetaNeuralAgent(NeuralAgent):
             return min_eval
     
     def getAction(self, state):
-        neural_action = super().getAction(state, True)
-        if isinstance(neural_action, list):
-            neural_action, neural_score = neural_action
-        else:
-            neural_action, neural_score = neural_action, 0
-        alphabeta_action = None
-        alphabeta_score = float('-inf')
+        best_score = float('-inf')
+        best_action = None
         for action in state.getLegalActions(0):
             succesor = state.generateSuccessor(0, action)
             score = self.alphabeta(succesor, 0, float('-inf'), float('+inf'), 1)
-            if score > alphabeta_score:
-                alphabeta_score = score
-                alphabeta_action = action
-        if neural_score >= alphabeta_score:
-            return neural_action
-        else:
-            return alphabeta_action
+            if score > best_score:
+                best_score = score
+                best_action = action
+        # Cada acción reduce el peso de la red neuronal, ya que es mas "caotica"
+        if self.w_neural < 1 and self.w_trad < 1:
+            self.w_neural *= 0.95
+            self.w_trad *= 1.05
+        return best_action
