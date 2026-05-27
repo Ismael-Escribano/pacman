@@ -21,6 +21,12 @@ import random, util
 random.seed(42)  # For reproducibility
 from game import Agent
 from pacman import GameState
+from enum import Enum
+
+class Evaluation(Enum):
+    neural_and_heuristics = 0
+    neural = 1
+    heuristics = 2
 
 class ReflexAgent(Agent):
     """
@@ -243,7 +249,7 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
                     return self.evaluationFunction(gameState)
                 for action in actions:
                     successor = gameState.generateSuccessor(agentIndex, action)
-                    eval_score = alphabeta(successor, depth+1, alpha, beta, agentIndex+1)
+                    eval_score = alphabeta(successor, depth, alpha, beta, agentIndex+1)
                     max_eval = max(max_eval, eval_score)
                     alpha = max(alpha, eval_score)
                     if beta <= alpha:
@@ -411,14 +417,20 @@ class NeuralAgent(Agent):
         
         return numeric_map
 
-    def evaluationFunction(self, state, neural = True):
+    def evaluationFunction(self, state: GameState, evaluation: Evaluation = Evaluation.neural_and_heuristics):
         """
         Una función de evaluación basada en la red neuronal y en heurísticas adicionales.
         """
         if self.model is None:
             return 0  # Si no hay modelo, devolver 0
         
-        if neural:
+        # Obtener acciones legales
+        legal_actions = state.getLegalActions()
+        
+        # Aplicar heurísticas adicionales, similar a betterEvaluationFunction
+        score = state.getScore()
+
+        if evaluation == Evaluation.neural or evaluation == Evaluation.neural_and_heuristics:
             # Convertir a matriz
             state_matrix = self.state_to_matrix(state)
             
@@ -430,75 +442,77 @@ class NeuralAgent(Agent):
                 output = self.model(state_tensor)
                 probabilities = torch.nn.functional.softmax(output, dim=1).cpu().numpy()[0]
         
-        # Obtener acciones legales
-        legal_actions = state.getLegalActions()
-        
-        # Aplicar heurísticas adicionales, similar a betterEvaluationFunction
-        score = state.getScore()
-        
-        # Mejorar la evaluación con conocimiento del dominio
-        pacman_pos = state.getPacmanPosition()
-        food = state.getFood().asList()
-        ghost_states = state.getGhostStates()
-        
-        # Factor 1: Distancia a la comida más cercana
-        if food:
-            min_food_distance = min(manhattanDistance(pacman_pos, food_pos) for food_pos in food)
-            score += 20 / (min_food_distance + 1)
-        
-        # Factor 2: Proximidad a fantasmas
-        for ghost_state in ghost_states:
-            ghost_pos = ghost_state.getPosition()
-            ghost_distance = manhattanDistance(pacman_pos, ghost_pos)
+        if evaluation == Evaluation.heuristics or evaluation == Evaluation.neural_and_heuristics:            
+            # Mejorar la evaluación con conocimiento del dominio
+            pacman_pos = state.getPacmanPosition()
+            food = state.getFood().asList()
+            ghost_states = state.getGhostStates()
+            capsules = state.getCapsules()
             
-            '''
-            if ghost_state.scaredTimer > 0 and ghost_distance <= 3:
-                # Si el fantasma está asustado, acercarse a él
+            # Factor 1: Distancia a la comida más cercana
+            if food:
+                min_food_distance = min(manhattanDistance(pacman_pos, food_pos) for food_pos in food)
+                score += 20 / (min_food_distance + 1)
+            
+            # Factor 2: Proximidad a fantasmas
+            for ghost_state in ghost_states:
+                ghost_pos = ghost_state.getPosition()
+                ghost_distance = manhattanDistance(pacman_pos, ghost_pos)
                 
-                score += 50 / (ghost_distance + 1)
-            else:
+                '''
+                if ghost_state.scaredTimer > 0 and ghost_distance <= 3:
+                    # Si el fantasma está asustado, acercarse a él
+                    
+                    score += 50 / (ghost_distance + 1)
+                else:
+                
+                    # Si no está asustado, evitarlo
+                '''
+                if ghost_distance <= 4:
+                    score -= 200 / (ghost_distance + 1) # Gran penalización por estar demasiado cerca
             
-                # Si no está asustado, evitarlo
-            '''
-            if ghost_distance <= 4:
-                score -= 200  # Gran penalización por estar demasiado cerca
-        
-        # Factor 3: comer más cuando el fantasma está asustado
-        times = []
-        for ghost_state in ghost_states:
-            times.append(ghost_state.scaredTimer)
-        
-        if all(times) > 0 and food:
-            min_food_distance = min(manhattanDistance(pacman_pos, food_pos) for food_pos in food)
-            score += 1 / (min_food_distance + 1)
+            # Factor 3: comer más cuando el fantasma está asustado
+            times = []
+            for ghost_state in ghost_states:
+                times.append(ghost_state.scaredTimer)
             
-            if pacman_pos == Directions.STOP:
-                score -= 500
-        
-        # Factor 4: no quedarse dando vueltas (no estancarse)
-        ultimas_acciones = []
-        ultimas_acciones.append(pacman_pos)
+            if all(times) > 0 and food:
+                min_food_distance = min(manhattanDistance(pacman_pos, food_pos) for food_pos in food)
+                score += 200 / (min_food_distance + 1)
 
-        if len(ultimas_acciones) > 4:
-            ultimas_acciones.pop(0) # no guardamos todas, quitamos al llegar a 5 y así siempre habrá 4 para comprobar abajo
+            # Factor 4: comer cápsulas cuando los fantasmas están cerca
+            if capsules:
+                min_capsule_distance = min(manhattanDistance(pacman_pos, capsule_pos) for capsule_pos in capsules)
+                fantasmas_cerca = False
+                for ghost_state in ghost_states:
+                    ghost_pos = ghost_state.getPosition()
+                    ghost_distance = manhattanDistance(pacman_pos, ghost_pos)
 
-        if len(ultimas_acciones) == 4: # vemos si hace lo mismo en bucle hasta 2 veces (N S N S por ejemplo, así hará otro movimiento)
+                    if ghost_distance <= 4 and ghost_state.scaredTimer == 0:
+                        fantasmas_cerca = True
+                        break
+                    
+                if fantasmas_cerca:
+                    if min_capsule_distance <= 3:
+                        score += 30 / (min_capsule_distance + 1)
+                else:
+                    if min_capsule_distance <= 3:
+                        score += 5 / (min_capsule_distance + 1)
 
-            if ultimas_acciones[-1] == ultimas_acciones[-2] and ultimas_acciones[-2] == ultimas_acciones[-3]:
-                score -= 500
-
-        
-
-        if neural:
+        if evaluation == Evaluation.neural or evaluation == Evaluation.neural_and_heuristics:
             # Combinar la puntuación de la red con la heurística
             neural_score = 0
             for i, action in enumerate(self.idx_to_action.values()):
                 if action in legal_actions:
                     neural_score += probabilities[i] * 100
-            
-            return score + neural_score
-        else:
-            return score
+
+        match evaluation:
+            case Evaluation.neural_and_heuristics:
+                return score + neural_score
+            case Evaluation.neural:
+                return neural_score
+            case Evaluation.heuristics:
+                return score
 
     def getAction(self, state):
         """
@@ -578,16 +592,25 @@ def createNeuralAgent(model_path="models/pacman_model.pth"):
 
 
 class AlphaBetaNeuralAgent(NeuralAgent):
-    def __init__(self, model_path="models/pacman_model.pth", depth = '6', w_trad = 0.25, w_neural = 0.75):
+    def __init__(self, model_path="models/pacman_model.pth", depth = '4', w_trad = 0.25, w_neural = 0.75):
         super().__init__(model_path)
+
         self.depth = int(depth)
+        
         self.w_trad = w_trad
+        self.start_trad = w_trad
+        self.end_trad = 1 - w_trad
+
         self.w_neural = w_neural
+        self.start_neural = w_neural
+        self.end_neural = 1 - w_neural
+
+        self.total_food = None
 
     def combined_evaluation(self, state):
-        trad_score = self.evaluationFunction(state, neural=False)
+        trad_score = self.evaluationFunction(state, evaluation=Evaluation.heuristics)
 
-        neural_score = self.evaluationFunction(state, neural=True)
+        neural_score = self.evaluationFunction(state, evaluation=Evaluation.neural)
         
         return self.w_trad * trad_score + self.w_neural * neural_score
 
@@ -602,7 +625,7 @@ class AlphaBetaNeuralAgent(NeuralAgent):
                 return self.combined_evaluation(gameState)
             for action in actions:
                 successor = gameState.generateSuccessor(agentIndex, action)
-                eval_score = self.alphabeta(successor, depth+1, alpha, beta, agentIndex+1)
+                eval_score = self.alphabeta(successor, depth, alpha, beta, agentIndex+1)
                 max_eval = max(max_eval, eval_score)
                 alpha = max(alpha, eval_score)
                 if beta <= alpha:
@@ -630,17 +653,26 @@ class AlphaBetaNeuralAgent(NeuralAgent):
                     break
             return min_eval
     
-    def getAction(self, state):
+    def getAction(self, state: GameState):
         best_score = float('-inf')
         best_action = None
         for action in state.getLegalActions(0):
             succesor = state.generateSuccessor(0, action)
             score = self.alphabeta(succesor, 0, float('-inf'), float('+inf'), 1)
+            if action == Directions.STOP:
+                score -= 200
             if score > best_score:
                 best_score = score
                 best_action = action
-        # Cada acción reduce el peso de la red neuronal, ya que es mas "caotica"
-        if self.w_neural < 1 and self.w_trad < 1:
-            self.w_neural *= 0.95
-            self.w_trad *= 1.05
+        # Obtenemos la comida total en el primer turno
+        if self.total_food is None:
+            self.total_food = state.getNumFood()
+        
+        # Obtenemos el progreso del juego (% de comida por comer)
+        current_food = state.getNumFood()
+        game_progress = current_food / self.total_food
+
+        # Modificamos los pesos usando interpolación lineal
+        self.w_neural = self.start_neural + (self.end_neural - self.start_neural) * game_progress
+        self.w_trad = self.start_trad + (self.end_trad - self.start_trad) * game_progress
         return best_action

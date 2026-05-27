@@ -748,7 +748,7 @@ def runGames(layout, pacman, ghosts, display, numGames, record, numTraining=0, c
     # Fijar semilla consistente
     
     seed = '42' if seed is None else str(seed)  # o cualquier valor fijo
-    print(seed)
+    print(f'{seed=}')
     random.seed(seed)
     ###################################################
     for i in range(numGames):
