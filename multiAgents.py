@@ -452,31 +452,29 @@ class NeuralAgent(Agent):
             # Factor 1: Distancia a la comida más cercana
             if food:
                 min_food_distance = min(manhattanDistance(pacman_pos, food_pos) for food_pos in food)
-                score += 20 / (min_food_distance + 1)
+                score += 5 / (min_food_distance + 1)
             
             # Factor 2: Proximidad a fantasmas
             for ghost_state in ghost_states:
                 ghost_pos = ghost_state.getPosition()
                 ghost_distance = manhattanDistance(pacman_pos, ghost_pos)
                 
-                '''
-                if ghost_state.scaredTimer > 0 and ghost_distance <= 3:
-                    # Si el fantasma está asustado, acercarse a él
-                    
-                    score += 50 / (ghost_distance + 1)
+                if ghost_state.scaredTimer > 0: # Si el fantasma está asustado
+                    if ghost_distance <= 2:
+                        score -= 200 
+                    elif ghost_distance > ghost_state.scaredTimer:
+                        score -= 50 / (ghost_distance + 1) # Cuanto más lejos esté el fantasma asustado, mejor score
                 else:
-                
                     # Si no está asustado, evitarlo
-                '''
-                if ghost_distance <= 4:
-                    score -= 200 / (ghost_distance + 1) # Gran penalización por estar demasiado cerca
+                    score -= 100 / (ghost_distance + 1)
+            
             
             # Factor 3: comer más cuando el fantasma está asustado
             times = []
             for ghost_state in ghost_states:
                 times.append(ghost_state.scaredTimer)
             
-            if all(times) > 0 and food:
+            if all(times) and food:
                 min_food_distance = min(manhattanDistance(pacman_pos, food_pos) for food_pos in food)
                 score += 200 / (min_food_distance + 1)
 
@@ -494,10 +492,22 @@ class NeuralAgent(Agent):
                     
                 if fantasmas_cerca:
                     if min_capsule_distance <= 3:
-                        score += 30 / (min_capsule_distance + 1)
+                        score += 50 / (min_capsule_distance + 1)
                 else:
                     if min_capsule_distance <= 3:
                         score += 5 / (min_capsule_distance + 1)
+
+            # Factor 5: comer más cuando hay poca comida
+            if food and len(food) <= 15:
+                min_food_distance = min(manhattanDistance(pacman_pos, food_pos) for food_pos in food)
+                score += 200 / (min_food_distance + 1)
+            
+            # Factor 6: penalizar comida lejana
+            if food:
+                min_food_distance = min(manhattanDistance(pacman_pos, food_pos) for food_pos in food)
+                if min_food_distance >= 8:
+                    score -= 5 * min_food_distance
+
 
         if evaluation == Evaluation.neural or evaluation == Evaluation.neural_and_heuristics:
             # Combinar la puntuación de la red con la heurística

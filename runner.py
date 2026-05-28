@@ -15,18 +15,18 @@ import gamedata
 #               Configuración general
 ######################################################
 
-LAYOUT = 'mediumClassic'                # Nombre del laberinto
-DEPTH = 1                               # Profundidad máxima de Alpha-Beta
+LAYOUT_NAME = 'mediumClassic'                # Nombre del laberinto
+DEPTH = 4                               # Profundidad máxima de Alpha-Beta
 SEED_START = 0                          # Primera semilla
-SEED_END = 5                            # Última semilla
-OUTPUT_DIR = 'runner_data'              # Carpeta para guardar CSV
+SEED_END = 10                            # Última semilla
+OUTPUT_DIR_NAME = 'runner_data'              # Carpeta para guardar CSV
 TIMEOUT = 300                           # Tiempo máximo por partida
 START_W_TRAD = 0.25                     # Peso inicial para heurísticas tradicionales
 START_W_NEURAL = 0.75                   # Peso inicial para la red neuronal
 
 
-OUTPUT_DIR = Path(OUTPUT_DIR)
-LAYOUT = layout.getLayout(LAYOUT)
+OUTPUT_DIR = Path(OUTPUT_DIR_NAME)
+LAYOUT = layout.getLayout(LAYOUT_NAME)
 
 ######################################################
 #               Funciones auxiliares
@@ -134,18 +134,21 @@ def main() -> tuple[list[GameData], GameData]:
     max_score = float('-inf')
     print(f'Ejecutando {SEED_END - SEED_START} partidas...')
     mostrar_progreso(SEED_START, SEED_END, SEED_START - 1)
-    for seed in range(SEED_START, SEED_END):
-        game = run_game(seed)
+    try:
+        for seed in range(SEED_START, SEED_END):
+            game = run_game(seed)
 
-        games.append(game)
+            games.append(game)
 
-        if game.score > max_score:
-            max_score = game.score
-            best_game = game
+            if game.score > max_score:
+                max_score = game.score
+                best_game = game
 
-        mostrar_progreso(SEED_START, SEED_END, seed)
-
-    return games, best_game
+            mostrar_progreso(SEED_START, SEED_END, seed)
+    except KeyboardInterrupt:
+        return games, best_game
+    else:
+        return games, best_game
 
 
 def summary(games: list[GameData], best_game: GameData) -> None:
@@ -175,7 +178,7 @@ def summary(games: list[GameData], best_game: GameData) -> None:
     print(f'% de victorias: {sum(g.win for g in games)/len(games) * 100:.2f}%\n')
 
     print(f'MEJOR PARTIDA:\n\tScore: {best_game.score}\n\tSeed: {best_game.seed}\n\tWin: {best_game.win}\n\tCSV file: {best_game.csv_path}')
-    print(f'COMANDO PARA VER LA MEJOR PARTIDA:\n---->\tpython pacman.py --csv {best_game.csv_path} -s {best_game.seed}')
+    print(f'COMANDO PARA VER LA MEJOR PARTIDA:\n---->\tpython pacman.py -l {LAYOUT_NAME} --csv {best_game.csv_path} -s {best_game.seed}')
 
 if __name__ == "__main__":
     games, best_game = main()
