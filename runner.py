@@ -15,12 +15,12 @@ import gamedata
 #               Configuración general
 ######################################################
 
-LAYOUT_NAME = 'mediumClassic'                # Nombre del laberinto
-DEPTH = 4                               # Profundidad máxima de Alpha-Beta
+LAYOUT_NAME = 'mediumClassic'           # Nombre del laberinto
+DEPTH = 3                               # Profundidad máxima de Alpha-Beta
 SEED_START = 0                          # Primera semilla
-SEED_END = 10                            # Última semilla
-OUTPUT_DIR_NAME = 'runner_data'              # Carpeta para guardar CSV
-TIMEOUT = 300                           # Tiempo máximo por partida
+SEED_END = 10                           # Última semilla
+OUTPUT_DIR_NAME = 'runner_data6'        # Carpeta para guardar CSV
+TIMEOUT = 600                           # Tiempo máximo por partida
 START_W_TRAD = 0.25                     # Peso inicial para heurísticas tradicionales
 START_W_NEURAL = 0.75                   # Peso inicial para la red neuronal
 
